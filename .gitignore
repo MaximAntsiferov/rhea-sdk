@@ -1,0 +1,10 @@
+.idea
+.pytest_cache
+.python-version
+report_example
+_tests_example
+data
+venv
+.venv
+.env
+logs
