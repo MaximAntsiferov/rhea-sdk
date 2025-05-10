@@ -19,7 +19,7 @@
 - Install the latest stable version of rhea-sdk, simply running `pip install rhea-sdk`
 - Create NEAR account and get your private key [wallet](https://wallet.near.org/create)
 
-### Simple money transfer
+### Usage examples
 
 ```python
 import asyncio
