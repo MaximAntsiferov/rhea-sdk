@@ -11,7 +11,6 @@ class Shell:
 
     @staticmethod
     async def execute_command(command: str) -> str | dict:
-        print(shlex.split(command))
         process = await asyncio.create_subprocess_exec(
             *shlex.split(command),
             stdout=asyncio.subprocess.PIPE,
