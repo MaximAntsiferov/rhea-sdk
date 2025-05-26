@@ -1,6 +1,6 @@
 [project]
 name = "rhea-sdk"
-version = "0.1.5"
+version = "0.1.6"
 description = "Asynchronous SDK for interacting with Rhea Finance DEX"
 authors = [{ name = "Maksim_Antsiferov", email = "antsiferov.ms@gmail.com" }]
 license = { file = "LICENSE" }

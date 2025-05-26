@@ -53,7 +53,7 @@ class AccountCommandsBuilder:
             return f"near --quiet contract call-function as-transaction {wnear_contract_id} near_withdraw json-args {json_args} prepaid-gas '{prepaid_gas} Tgas' attached-deposit '1 yoctoNEAR' sign-as {self.account_id} network-config {self.network_id} sign-with-plaintext-private-key --signer-public-key {self.public_key} --signer-private-key {self.private_key} send"
         return f"near --quiet contract call-function as-transaction {wnear_contract_id} near_withdraw json-args {json_args} prepaid-gas '{prepaid_gas} Tgas' attached-deposit '1 yoctoNEAR' sign-as {self.account_id} network-config {self.network_id} sign-with-seed-phrase {self.seed_phrase} --seed-phrase-hd-path 'm/44'\''/397'\''/0'\''' send"
 
-    def _get_wnear_contract_id(self) -> float:
+    def _get_wnear_contract_id(self) -> str:
         if TESTNET_NETWORK_ID in self.network_id:
             return WRAP_NEAR_TESTNET_CONTRACT
         return WRAP_NEAR_MAINNET_CONTRACT
