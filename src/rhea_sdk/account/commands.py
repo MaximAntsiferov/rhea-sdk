@@ -42,16 +42,16 @@ class AccountCommandsBuilder:
         wnear_contract_id = self._get_wnear_contract_id()
         json_args = "{}"
         if self.private_key:
-            return f"near --quiet contract call-function as-transaction {wnear_contract_id} near_deposit json-args {json_args} prepaid-gas '{prepaid_gas} Tgas' attached-deposit '{amount} NEAR' sign-as {self.account_id} network-config {self.network_id} sign-with-plaintext-private-key --signer-public-key {self.public_key} --signer-private-key {self.private_key} send"
-        return f"near --quiet contract call-function as-transaction {wnear_contract_id} near_deposit json-args {json_args} prepaid-gas '{prepaid_gas} Tgas' attached-deposit '{amount} NEAR' sign-as {self.account_id} network-config {self.network_id} sign-with-seed-phrase {self.seed_phrase} --seed-phrase-hd-path 'm/44'\''/397'\''/0'\''' send"
+            return f"near contract call-function as-transaction {wnear_contract_id} near_deposit json-args {json_args} prepaid-gas '{prepaid_gas} Tgas' attached-deposit '{amount} NEAR' sign-as {self.account_id} network-config {self.network_id} sign-with-plaintext-private-key --signer-public-key {self.public_key} --signer-private-key {self.private_key} send"
+        return f"near contract call-function as-transaction {wnear_contract_id} near_deposit json-args {json_args} prepaid-gas '{prepaid_gas} Tgas' attached-deposit '{amount} NEAR' sign-as {self.account_id} network-config {self.network_id} sign-with-seed-phrase {self.seed_phrase} --seed-phrase-hd-path 'm/44'\''/397'\''/0'\''' send"
 
     def unwrap_near(self, amount: float, prepaid_gas: float = 30.0) -> str:
         wnear_contract_id = self._get_wnear_contract_id()
         amount = str(int(Decimal(str(amount)) * 10**24))
         json_args = shlex.quote(json.dumps({"amount": str(amount)}))
         if self.private_key:
-            return f"near --quiet contract call-function as-transaction {wnear_contract_id} near_withdraw json-args {json_args} prepaid-gas '{prepaid_gas} Tgas' attached-deposit '1 yoctoNEAR' sign-as {self.account_id} network-config {self.network_id} sign-with-plaintext-private-key --signer-public-key {self.public_key} --signer-private-key {self.private_key} send"
-        return f"near --quiet contract call-function as-transaction {wnear_contract_id} near_withdraw json-args {json_args} prepaid-gas '{prepaid_gas} Tgas' attached-deposit '1 yoctoNEAR' sign-as {self.account_id} network-config {self.network_id} sign-with-seed-phrase {self.seed_phrase} --seed-phrase-hd-path 'm/44'\''/397'\''/0'\''' send"
+            return f"near contract call-function as-transaction {wnear_contract_id} near_withdraw json-args {json_args} prepaid-gas '{prepaid_gas} Tgas' attached-deposit '1 yoctoNEAR' sign-as {self.account_id} network-config {self.network_id} sign-with-plaintext-private-key --signer-public-key {self.public_key} --signer-private-key {self.private_key} send"
+        return f"near contract call-function as-transaction {wnear_contract_id} near_withdraw json-args {json_args} prepaid-gas '{prepaid_gas} Tgas' attached-deposit '1 yoctoNEAR' sign-as {self.account_id} network-config {self.network_id} sign-with-seed-phrase {self.seed_phrase} --seed-phrase-hd-path 'm/44'\''/397'\''/0'\''' send"
 
     def _get_wnear_contract_id(self) -> str:
         if TESTNET_NETWORK_ID in self.network_id:
