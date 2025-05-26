@@ -25,7 +25,10 @@ class ConnectionsConfigManager:
         result = subprocess.run(["near", "--quiet", "config", "show-connections"], capture_output=True, text=True)
         if result.returncode != 0:
             RuntimeError(result.stderr)
-        return "\n".join(result.stderr.splitlines()[2:])
+        if result.stderr.startswith("Note"):
+            return "\n".join(result.stderr.splitlines()[4:])
+        else:
+            return "\n".join(result.stderr.splitlines()[2:])
 
     @staticmethod
     def edit_connections_config(network_id: str, node_url: str) -> None:
