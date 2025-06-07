@@ -1,9 +1,10 @@
-FT_MINIMUM_STORAGE_BALANCE_LARGE = "12500000000000000000000" # 0.0125 NEAR
+FT_MINIMUM_STORAGE_BALANCE = "0.0125"
 ONE_YOCTO_NEAR = "0.000000000000000000000001"
-TESTNET_NETWORK_ID = "testnet"
-MAINNET_NETWORK_ID = "mainnet"
-DEFAULT_TESTNET_NODE_URL = "https://archival-rpc.testnet.near.org/"
-DEFAULT_MAINNET_NODE_URL = "https://rpc.mainnet.near.org/"
+NEAR = 1_000_000_000_000_000_000_000_000
+TESTNET_CHAIN_ID = "testnet"
+MAINNET_CHAIN_ID = "mainnet"
+DEFAULT_TESTNET_RPC_URL = "https://archival-rpc.testnet.near.org/"
+DEFAULT_MAINNET_RPC_URL = "https://rpc.mainnet.near.org/"
 WRAP_NEAR_TESTNET_CONTRACT = "wrap.testnet"
 WRAP_NEAR_MAINNET_CONTRACT = "wrap.near"
 RHEA_DLC_TESTNET_CONTRACT = "dclv2.ref-dev.testnet"

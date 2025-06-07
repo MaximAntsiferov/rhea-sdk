@@ -1,7 +1,8 @@
-import re
+from decimal import Decimal
 
-from rhea_sdk.account.commands import AccountCommandsBuilder
-from rhea_sdk.utils import PublicKeyGenerator
+from py_near import account
+
+from rhea_sdk.constances import NEAR, ONE_YOCTO_NEAR,  FT_MINIMUM_STORAGE_BALANCE
 
 
 class Account:
@@ -10,78 +11,66 @@ class Account:
         rhea: "Rhea",
         account_id: str,
         private_key: str = None,
-        seed_phrase: str = None,
     ) -> None:
         self._rhea = rhea
         self.account_id = account_id
         self.private_key = private_key
-        self.seed_phrase = seed_phrase
-        self.public_key = self._get_public_key(private_key) if private_key else None
-        self._commands_builder = self._get_commands_builder()
+        self._acc = account.Account(self.account_id, self.private_key, self._rhea.rpc_url)
+        self.chain_id = None
 
-    def _get_commands_builder(self) -> AccountCommandsBuilder:
-        return AccountCommandsBuilder(
-            self.account_id,
-            self.private_key,
-            self.public_key,
-            self.seed_phrase,
-            self._rhea.network_id,
-            self._rhea.node_url,
+    async def startup(self) -> None:
+        await self._acc.startup()
+        self.chain_id = self._acc.chain_id
+
+
+    async def get_token_balance(self, token: str) -> str:
+        data = await self._rhea.fastnear.get_full_account_data(self.account_id)
+        if not data.get("tokens"):
+            raise ValueError(f"No tokens available for account {self.account_id}")
+        for token_ in data["tokens"]:
+            if token_["contract_id"] == token:
+                token_metadata = await self._rhea.ft.get_metadata(token)
+                return str(Decimal(token_["balance"]) / 10 ** token_metadata["decimals"])
+        return "0"
+
+
+    async def get_near_balance(self) -> str:
+        data = await self._rhea.fastnear.get_full_account_data(self.account_id)
+        if not data.get("state"):
+            raise ValueError(f"No state available for account {self.account_id}")
+        return str(Decimal(data["state"]["balance"]) / NEAR)
+
+
+    async def get_storage_balance(self, contract_id: str) -> dict:
+        result =  await self._acc.view_function(
+            contract_id,
+            "storage_balance_of",
+            {"account_id": self.account_id},
         )
-
-    @staticmethod
-    def _get_public_key(private_key: str) -> str:
-        return PublicKeyGenerator.get_from_private_key(private_key)
-
-    async def get_token_balance(self, token: str) -> dict:
-        command = self._commands_builder.get_token_balance(token)
-        response = await self._rhea.shell.execute_command(command)
-        return self._build_token_balance_response(token, response)
-
-    async def get_near_balance(self) -> dict:
-        command = self._commands_builder.get_near_balance()
-        response = await self._rhea.shell.execute_command(command)
-        return self._build_near_balance_response(response)
-
-    async def get_storage_balance(self, contract_id: str) -> str:
-        command = self._commands_builder.get_storage_balance(contract_id)
-        return await self._rhea.shell.execute_command(command)
-
-    async def deposit_for_storage(self, contract_id: str, amount: float = 0.00125, prepaid_gas: float = 30.0) -> str:
-        command = self._commands_builder.deposit_for_storage(contract_id, amount, prepaid_gas)
-        return await self._rhea.shell.execute_command(command)
+        return result.result
 
 
-    async def wrap_near(self, amount: float, prepaid_gas: float = 30.0) -> dict:
-        command = self._commands_builder.wrap_near(amount, prepaid_gas)
-        await self._rhea.shell.execute_command(command)
-        return {"wrapped": amount}
-        # return self._build_transaction_response(response)
+    async def deposit_for_storage(self, contract_id: str, amount: str = FT_MINIMUM_STORAGE_BALANCE) -> None:
+        converted_amount = int(Decimal(amount) * Decimal(NEAR))
+        await self._acc.function_call(contract_id, "storage_deposit", {}, amount=converted_amount)
 
-    async def unwrap_near(self, amount: float, prepaid_gas: float = 30.0) -> dict:
-        command = self._commands_builder.unwrap_near(amount, prepaid_gas)
-        await self._rhea.shell.execute_command(command)
-        return {"unwrapped": amount}
-        # return self._build_transaction_response(response)
 
-    @staticmethod
-    def _build_token_balance_response(token: str, response: str) -> dict:
-        match = re.search(r"account has (\d+\.?\d*) ", response)
-        return {"token": token, "balance": match.group(1)}
+    async def wrap_near(self, amount: str) -> str:
+        converted_amount = int(Decimal(amount) * Decimal(NEAR))
+        await self._acc.function_call(
+            self._rhea.ft.wnear_contract,
+            "near_deposit",
+            {},
+            amount=converted_amount,
+        )
+        return amount
 
-    @staticmethod
-    def _build_near_balance_response(response: str) -> dict:
-        balance_match = re.search(r"total balance is (\d+\.?\d*) NEAR", response)
-        locked_match = re.search(r"but (\d+\.?\d*) NEAR is locked", response)
-        return {"token": "near_native", "balance": balance_match.group(1), "locked": locked_match.group(1)}
-
-    # @staticmethod
-    # def _build_transaction_response(response: str) -> dict:
-    #     gas_pattern = r"Gas burned: (\d+\.\d+)"
-    #     fee_pattern = r"Transaction fee: (\d+\.\d+)"
-    #     id_pattern = r"Transaction ID: ([A-Za-z0-9]+)"
-    #     return {
-    #         "gas_burned": float(re.search(gas_pattern, response).group(1)),
-    #         "transaction_fee": float(re.search(fee_pattern, response).group(1)),
-    #         "transaction_id": re.search(id_pattern, response).group(1)
-    #     }
+    async def unwrap_near(self, amount: str) -> str:
+        converted_amount = str(int(Decimal(amount) * Decimal(NEAR)))
+        await self._acc.function_call(
+            self._rhea.ft.wnear_contract,
+            "near_withdraw",
+            {"amount": converted_amount},
+            amount=1,
+        )
+        return amount
