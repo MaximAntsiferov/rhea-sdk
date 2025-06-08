@@ -64,7 +64,7 @@ class DLCPool:
         result = await self._rhea.account._acc.function_call(token_in, "ft_transfer_call", json_args, amount=1)
         if result.status.get("Failure"):
             raise TransactionError(result.status)
-        if token_out == self._rhea.ft.wrap_contract:
+        if token_out == self._rhea.ft.wnear_contract:
             amount_out = self._get_amount_out(result) / NEAR
             await self._rhea.account.wrap_near(amount_out)
         return result
