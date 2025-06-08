@@ -1,11 +1,13 @@
 import json
 import math
+import re
 from decimal import Decimal
 from typing import Iterable
 
+from py_near.models import TransactionResult
 from rhea_sdk.constances import DCL_POOL_FEE_LIST, CONSTANT_D, RHEA_DLC_TESTNET_CONTRACT, TESTNET_CHAIN_ID, \
-    RHEA_DLC_MAINNET_CONTRACT, ONE_YOCTO_NEAR
-from rhea_sdk.exceptions import EmptyStorageBalance
+    RHEA_DLC_MAINNET_CONTRACT, NEAR
+from rhea_sdk.exceptions import EmptyStorageBalance, TransactionError, TransactionReceiptError
 
 
 class DLCPool:
@@ -41,7 +43,7 @@ class DLCPool:
             token_b: str(math.pow(CONSTANT_D, -pool["current_point"] - 1) * (10**18)),
         }
 
-    async def swap(self, token_in: str, token_out: str, pool_id: str, amount: str, min_output_amount: str):
+    async def swap(self, token_in: str, token_out: str, pool_id: str, amount: str, min_output_amount: str) -> TransactionResult:
         contracts = (token_in, token_out)
         await self._check_storage_balances(contracts)
         amount = await self._calculate_amount(token_in, amount)
@@ -59,8 +61,13 @@ class DLCPool:
             "amount": amount,
             "msg": msg,
         }
-        await self._rhea.account._acc.function_call(token_in, "ft_transfer_call", json_args, amount=1)
-
+        result = await self._rhea.account._acc.function_call(token_in, "ft_transfer_call", json_args, amount=1)
+        if result.status.get("Failure"):
+            raise TransactionError(result.status)
+        if token_out == self._rhea.ft.wrap_contract:
+            amount_out = self._get_amount_out(result) / NEAR
+            await self._rhea.account.wrap_near(amount_out)
+        return result
 
     async def _calculate_amount(self,  token_in: str, amount: str) -> str:
         token_in_metadata = await self._rhea.ft.get_metadata(token_in)
@@ -78,4 +85,9 @@ class DLCPool:
                 else:
                     raise EmptyStorageBalance(f"Storage balance deposit for {contract_id} required")
 
-
+    @staticmethod
+    def _get_amount_out(transaction_result: TransactionResult):
+        match = re.search(r'"amount_out":"(\d+)"', transaction_result.receipt_outcome[1].logs[0])
+        if match:
+            return match.group(1)
+        raise TransactionReceiptError("Error while getting transaction amount_out")

@@ -1,8 +1,9 @@
 from decimal import Decimal
 
 from py_near import account
-
-from rhea_sdk.constances import NEAR, ONE_YOCTO_NEAR,  FT_MINIMUM_STORAGE_BALANCE
+from py_near.models import TransactionResult
+from rhea_sdk.constances import NEAR, FT_MINIMUM_STORAGE_BALANCE
+from rhea_sdk.exceptions import TransactionError
 
 
 class Account:
@@ -50,27 +51,37 @@ class Account:
         return result.result
 
 
-    async def deposit_for_storage(self, contract_id: str, amount: str = FT_MINIMUM_STORAGE_BALANCE) -> None:
+    async def deposit_for_storage(
+        self,
+        contract_id: str,
+        amount: str = FT_MINIMUM_STORAGE_BALANCE,
+    ) -> TransactionResult:
         converted_amount = int(Decimal(amount) * Decimal(NEAR))
-        await self._acc.function_call(contract_id, "storage_deposit", {}, amount=converted_amount)
-
+        result = await self._acc.function_call(contract_id, "storage_deposit", {}, amount=converted_amount)
+        if result.status.get("Failure"):
+            raise TransactionError(result.status)
+        return result
 
     async def wrap_near(self, amount: str) -> str:
         converted_amount = int(Decimal(amount) * Decimal(NEAR))
-        await self._acc.function_call(
+        result = await self._acc.function_call(
             self._rhea.ft.wnear_contract,
             "near_deposit",
             {},
             amount=converted_amount,
         )
-        return amount
+        if result.status.get("Failure"):
+            raise TransactionError(result.status)
+        return result
 
     async def unwrap_near(self, amount: str) -> str:
         converted_amount = str(int(Decimal(amount) * Decimal(NEAR)))
-        await self._acc.function_call(
+        result = await self._acc.function_call(
             self._rhea.ft.wnear_contract,
             "near_withdraw",
             {"amount": converted_amount},
             amount=1,
         )
-        return amount
+        if result.status.get("Failure"):
+            raise TransactionError(result.status)
+        return result
