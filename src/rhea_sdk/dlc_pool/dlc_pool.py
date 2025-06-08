@@ -65,8 +65,9 @@ class DLCPool:
         if result.status.get("Failure"):
             raise TransactionError(result.status)
         if token_out == self._rhea.ft.wnear_contract:
-            amount_out = self._get_amount_out(result) / NEAR
-            await self._rhea.account.wrap_near(amount_out)
+            amount_out = self._get_amount_out(result)
+            converted_amount_out = Decimal(amount_out) / NEAR
+            await self._rhea.account.wrap_near(converted_amount_out)
         return result
 
     async def _calculate_amount(self,  token_in: str, amount: str) -> str:
