@@ -12,7 +12,7 @@ class Rhea:
         self,
         account_id: str,
         private_key: str,
-        rpc_url: str = DEFAULT_MAINNET_RPC_URL,
+        rpc_url: str | list[str] = DEFAULT_MAINNET_RPC_URL,
         storage_auto_deposit: bool = True,
     ) -> None:
         self.rpc_url = rpc_url
