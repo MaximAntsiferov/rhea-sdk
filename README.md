@@ -15,49 +15,49 @@
 
 
 **Few steps before getting started...**
-- Install near-cli-rs
 - Install the latest stable version of rhea-sdk, simply running `pip install rhea-sdk`
 - Create NEAR account and get your private key [wallet](https://wallet.near.org/create)
 
 ### Usage examples
 
 ```python
-import asyncio
+from py_near.account import Account
 from rhea_sdk import Rhea
 
 wnear_contract = "wrap.near"
 usdc_contract = "17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1"
 
+
 async def main():
-    rhea = Rhea(account_id="example.near", network_id="mainnet", private_key="ed25519:...")
-    
-    # Get account tokens balance
-    near_balance = await rhea.account.get_near_balance()
-    usdc_balance = await rhea.account.get_token_balance(usdc_contract)
-    wnear_balance = await rhea.account.get_token_balance(wnear_contract)
-    
-    # Wrap or Unwrap some NEAR
-    await rhea.account.wrap_near(0.15)
-    await rhea.account.unwrap_near(0.05)
-    
-    # List all DLC pools
-    pools = await rhea.dlc_pool.get_pools()
-    
-    # Get DLC pool_id by tokens and commission
-    pool_id = rhea.dlc_pool.get_pool_id(wnear_contract, usdc_contract, 100)
-    
-    # Get pool extended info by pool_id
-    pool = await rhea.dlc_pool.get_pool(pool_id)
-    
-    # Get current tokens price in the pool
-    prices = await rhea.dlc_pool.get_tokens_price(pool_id)
-    
-    # Calculate expected output
-    amount_to_swap = 0.1
-    min_output_amount = amount_to_swap * prices[wnear_contract]
-    
-    # Swap
-    await rhea.dlc_pool.swap(wnear_contract, usdc_contract, pool_id, amount_to_swap, min_output_amount)
+   account = Account(account_id="example.near", private_key="ed25519:...")
+   await account.startup()
+   
+   rhea = Rhea(account=account)
+
+   # Get account tokens balance
+   near_balance = await rhea.get_near_balance()
+   usdc_balance = await rhea.get_token_balance(usdc_contract)
+   wnear_balance = await rhea.get_token_balance(wnear_contract)
+
+   # Wrap or Unwrap some NEAR
+   await rhea.wrap_near(0.15)
+   await rhea.unwrap_near(0.05)
+
+   # List all DLC pools
+   pools = await rhea.dcl.get_pools()
+
+   # Get DLC pool_id by tokens and commission
+   pool_id = rhea.dcl.get_pool_id(wnear_contract, usdc_contract, 100)
+
+   # Get pool extended info by pool_id
+   pool = await rhea.dcl.get_pool(pool_id)
+
+   # Get current tokens price in the pool
+   prices = await rhea.dcl.get_tokens_price(pool_id)
+
+   # Swap
+   amount_to_swap = "0.1"
+   await rhea.dcl.swap(wnear_contract, usdc_contract, pool_id, amount_to_swap)
 ```
 
 </details>

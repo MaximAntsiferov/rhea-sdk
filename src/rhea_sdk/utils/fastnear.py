@@ -5,8 +5,8 @@ from rhea_sdk.constances import MAINNET_CHAIN_ID, TESTNET_CHAIN_ID
 
 class FastNearClient:
 
-    def __init__(self, network_id: str = MAINNET_CHAIN_ID):
-        self.chain_id = network_id
+    def __init__(self, chain_id: str = MAINNET_CHAIN_ID):
+        self.chain_id = chain_id
         self.base_url = self._get_base_url(self.chain_id)
 
     @staticmethod
