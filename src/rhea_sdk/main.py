@@ -1,13 +1,12 @@
 from decimal import Decimal
-from functools import lru_cache
+from typing import Iterable
 
 from py_near.account import Account, TransactionResult
 
-from rhea_sdk.constances import TESTNET_CHAIN_ID, WRAP_NEAR_TESTNET_CONTRACT, WRAP_NEAR_MAINNET_CONTRACT, NEAR, \
-    FT_MINIMUM_STORAGE_BALANCE
+from rhea_sdk.constances import TESTNET_CHAIN_ID, WRAP_NEAR_TESTNET_CONTRACT, WRAP_NEAR_MAINNET_CONTRACT, NEAR
 from rhea_sdk.dcl import DCL
 from rhea_sdk.exceptions import AccountInitializationError, TransactionError, AccountHasNoTokensError, \
-    AccountHasNoStateError
+    AccountHasNoStateError, EmptyStorageBalance
 from rhea_sdk.utils.fastnear import FastNearClient
 
 
@@ -26,7 +25,7 @@ class Rhea:
     ) -> None:
         if not self._is_account_initialized(account):
             raise AccountInitializationError(
-                "You must call 'py_near_acc.startup()' before providing it to Rhea init method"
+                "You must call 'await account.startup()' before providing it to Rhea init method"
             )
         self._account = account
         self.storage_auto_deposit = storage_auto_deposit
@@ -63,7 +62,6 @@ class Rhea:
         """Check if the provided py_near Account has been initialized."""
         return bool(account._lock)
 
-    @lru_cache(2)
     async def get_token_metadata(self, token_contract_id: str) -> dict:
         """
         Retrieve metadata for a fungible token contract.
@@ -108,7 +106,7 @@ class Rhea:
             raise AccountHasNoStateError(f"No state available for account {account_id}")
         return str(Decimal(data["state"]["balance"]) / NEAR)
 
-    async def get_storage_balance_of(self, contract_id: str, account_id: str = None) -> dict:
+    async def get_storage_balance(self, contract_id: str, account_id: str = None) -> dict:
         """
         Get storage balance information for an account on a specific contract.
             Args:
@@ -125,16 +123,32 @@ class Rhea:
         )
         return result.result
 
+    async def get_storage_balance_bounds(self, contract_id: str) -> dict:
+        """
+        Get min and max storage balance required for interacting with the contract.
+            Args:
+                contract_id: The contract ID to get bounds of
+            Returns:
+                Dictionary containing min and max storage balance bounds
+        """
+        result = await self._account.view_function(contract_id, "storage_balance_bounds", {})
+        return {
+            k: str(Decimal(v) / NEAR)
+            if isinstance(v, str) and v.isdigit()
+            else v
+            for k, v in result.result.items()
+        }
+
     async def storage_deposit(
             self,
             contract_id: str,
-            amount: str = FT_MINIMUM_STORAGE_BALANCE,
+            amount: str,
     ) -> TransactionResult:
         """
         Deposit storage for interacting with a contract.
             Args:
                 contract_id: The contract ID to deposit storage for
-                amount: Amount of NEAR to deposit (default: FT_MINIMUM_STORAGE_BALANCE)
+                amount: Amount of NEAR to deposit
             Returns:
                 Transaction result object
         """
@@ -148,6 +162,22 @@ class Rhea:
         if result.status.get("Failure"):
             raise TransactionError(result.status)
         return result
+
+    async def ensure_storage_balances(self, contracts_ids: Iterable[str]) -> None:
+        """
+        Check storage balances for given contracts and deposit if needed.
+            Args:
+                contracts_ids: Iterable of contract IDs to check.
+            Raises:
+                EmptyStorageBalance: If storage balance is required but not auto-deposited.
+        """
+        for contract_id in contracts_ids:
+            if not await self.get_storage_balance(contract_id):
+                if self.storage_auto_deposit:
+                    storage_balance_bounds = await self.get_storage_balance_bounds(contract_id)
+                    await self.storage_deposit(contract_id, storage_balance_bounds["min"])
+                else:
+                    raise EmptyStorageBalance(f"Storage balance deposit for {contract_id} required")
 
     async def wrap_near(self, amount: str) -> str:
         """

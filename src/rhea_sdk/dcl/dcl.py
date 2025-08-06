@@ -2,7 +2,6 @@ import json
 import math
 import re
 from decimal import Decimal
-from typing import Iterable
 
 from py_near.models import TransactionResult
 
@@ -100,7 +99,7 @@ class DCL:
                 TransactionResult: The result of the swap transaction.
         """
         contracts = (token_in, token_out)
-        await self._check_storage_balances(contracts)
+        await self._rhea.ensure_storage_balances(contracts)
         amount = await self._rhea.convert_to_atomic_units(token_in, amount)
         if min_output_amount != "0":
             min_output_amount = await self._rhea.convert_to_atomic_units(token_out, min_output_amount)
@@ -147,7 +146,7 @@ class DCL:
                 TransactionResult: The result of the swap transaction.
         """
         contracts = (token_in, token_out)
-        await self._check_storage_balances(contracts)
+        await self._rhea.ensure_storage_balances(contracts)
         output_amount = await self._rhea.convert_to_atomic_units(token_out, output_amount)
         max_input_amount = await self._rhea.convert_to_atomic_units(token_in, max_input_amount)
         msg = json.dumps({
@@ -172,20 +171,6 @@ class DCL:
             await self._rhea.wrap_near(converted_amount_out)
         return result
 
-    async def _check_storage_balances(self, contracts_ids: Iterable[str]) -> None:
-        """
-        Check storage balances for given contracts and deposit if needed.
-            Args:
-                contracts_ids: Iterable of contract IDs to check.
-            Raises:
-                EmptyStorageBalance: If storage balance is required but not auto-deposited.
-        """
-        for contract_id in contracts_ids:
-            if not await self._rhea.get_storage_balance_of(contract_id):
-                if self._rhea.storage_auto_deposit:
-                    await self._rhea.storage_deposit(contract_id)
-                else:
-                    raise EmptyStorageBalance(f"Storage balance deposit for {contract_id} required")
 
     @staticmethod
     def _get_amount_out(transaction_result: TransactionResult):
