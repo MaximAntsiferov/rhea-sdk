@@ -1,12 +1,11 @@
 import json
 import math
 import re
-from decimal import Decimal
 
 from py_near.models import TransactionResult
 
 from rhea_sdk.constances import DCL_POOL_FEE_LIST, CONSTANT_D, RHEA_DCL_TESTNET_CONTRACT, TESTNET_CHAIN_ID, \
-    RHEA_DCL_MAINNET_CONTRACT, NEAR
+    RHEA_DCL_MAINNET_CONTRACT
 from rhea_sdk.exceptions import TransactionError, TransactionReceiptError, PoolFeeError
 
 
@@ -78,13 +77,73 @@ class DCL:
             token_b: str(math.pow(CONSTANT_D, -pool["current_point"] - 1) * (10 ** 18)),
         }
 
+    async def quote(
+        self,
+        token_in: str,
+        token_out: str,
+        pool_id: str,
+        amount: str,
+        tag: str = None,
+    ) -> str:
+        """
+        Get a quote for a potential swap.
+            Args:
+                token_in: Input token contract ID.
+                token_out: Output token contract ID.
+                pool_id: The pool ID to get a quote from.
+                amount: The amount of input token to swap.
+                tag: Optional tag for the quote.
+            Returns:
+                Expected output amount as a string
+        """
+        amount = await self._rhea.convert_to_atomic_units(amount, token_in)
+        json_args = {
+            "pool_ids": [pool_id],
+            "input_amount": amount,
+            "input_token": token_in,
+            "output_token": token_out,
+            "tag": tag,
+        }
+        result = await self._rhea._account.view_function(self.dcl_contract_id, "quote", json_args)
+        return await self._rhea.convert_to_human_readable(result.result["amount"], token_out)
+
+    async def quote_by_output(
+        self,
+        token_in: str,
+        token_out: str,
+        pool_id: str,
+        output_amount: str,
+        tag: str = None,
+    ) -> str:
+        """
+        Get a quote for a potential swap based on desired output amount.
+            Args:
+                token_in: Input token contract ID.
+                token_out: Output token contract ID.
+                pool_id: The pool ID to get a quote from.
+                output_amount: The desired amount of output token.
+                tag: Optional tag for the quote.
+            Returns:
+                Required input amount as a string
+        """
+        output_amount = await self._rhea.convert_to_atomic_units(output_amount, token_out)
+        json_args = {
+            "pool_ids": [pool_id],
+            "output_amount": output_amount,
+            "input_token": token_in,
+            "output_token": token_out,
+            "tag": tag,
+        }
+        result = await self._rhea._account.view_function(self.dcl_contract_id, "quote_by_output", json_args)
+        return await self._rhea.convert_to_human_readable(result.result["amount"], token_in)
+
     async def swap(
-            self,
-            token_in: str,
-            token_out: str,
-            pool_id: str,
-            amount: str,
-            min_output_amount: str = "0",
+        self,
+        token_in: str,
+        token_out: str,
+        pool_id: str,
+        amount: str,
+        min_output_amount: str = "0",
     ) -> TransactionResult:
         """
         Execute a token swap in a DCL pool.
@@ -100,9 +159,9 @@ class DCL:
         """
         contracts = (token_in, token_out)
         await self._rhea.ensure_storage_balances(contracts)
-        amount = await self._rhea.convert_to_atomic_units(token_in, amount)
+        amount = await self._rhea.convert_to_atomic_units(amount, token_in)
         if min_output_amount != "0":
-            min_output_amount = await self._rhea.convert_to_atomic_units(token_out, min_output_amount)
+            min_output_amount = await self._rhea.convert_to_atomic_units(min_output_amount, token_out)
         msg = json.dumps({
             "Swap": {
                 "pool_ids": [pool_id],
@@ -119,9 +178,11 @@ class DCL:
         result = await self._rhea._account.function_call(token_in, "ft_transfer_call", json_args, amount=1)
         if result.status.get("Failure"):
             raise TransactionError(result.status)
+        if result.receipt_outcome[1].status.get("Failure"):
+            raise TransactionError(result.receipt_outcome[1].status)
         if token_out == self._rhea.wnear_contract:
             amount_out = self._get_amount_out(result)
-            converted_amount_out = Decimal(amount_out) / NEAR
+            converted_amount_out = await self._rhea.convert_to_human_readable(amount_out)
             await self._rhea.wrap_near(converted_amount_out)
         return result
 
@@ -147,8 +208,8 @@ class DCL:
         """
         contracts = (token_in, token_out)
         await self._rhea.ensure_storage_balances(contracts)
-        output_amount = await self._rhea.convert_to_atomic_units(token_out, output_amount)
-        max_input_amount = await self._rhea.convert_to_atomic_units(token_in, max_input_amount)
+        output_amount = await self._rhea.convert_to_atomic_units(output_amount, token_out)
+        max_input_amount = await self._rhea.convert_to_atomic_units(max_input_amount, token_in)
         msg = json.dumps({
             "SwapByOutput": {
                 "pool_ids": [pool_id],
@@ -167,7 +228,7 @@ class DCL:
             raise TransactionError(result.status)
         if token_out == self._rhea.wnear_contract:
             amount_out = self._get_amount_out(result)
-            converted_amount_out = Decimal(amount_out) / NEAR
+            converted_amount_out = await self._rhea.convert_to_human_readable(amount_out)
             await self._rhea.wrap_near(converted_amount_out)
         return result
 
@@ -178,63 +239,3 @@ class DCL:
         if match:
             return match.group(1)
         raise TransactionReceiptError("Error while getting transaction amount_out")
-
-    async def quote(
-            self,
-            token_in: str,
-            token_out: str,
-            pool_id: str,
-            amount: str,
-            tag: str = None,
-    ) -> str:
-        """
-        Get a quote for a potential swap.
-            Args:
-                token_in: Input token contract ID.
-                token_out: Output token contract ID.
-                pool_id: The pool ID to get a quote from.
-                amount: The amount of input token to swap.
-                tag: Optional tag for the quote.
-            Returns:
-                Expected output amount as a string
-        """
-        amount = await self._rhea.convert_to_atomic_units(amount, token_in)
-        json_args = {
-            "pool_ids": [pool_id],
-            "input_amount": amount,
-            "input_token": token_in,
-            "output_token": token_out,
-            "tag": tag,
-        }
-        result = await self._rhea._account.view_function(self.dcl_contract_id, "quote", json_args)
-        return await self._rhea.convert_to_human_readable(result.result["amount"], token_out)
-
-    async def quote_by_output(
-            self,
-            token_in: str,
-            token_out: str,
-            pool_id: str,
-            output_amount: str,
-            tag: str = None,
-    ) -> str:
-        """
-        Get a quote for a potential swap based on desired output amount.
-            Args:
-                token_in: Input token contract ID.
-                token_out: Output token contract ID.
-                pool_id: The pool ID to get a quote from.
-                output_amount: The desired amount of output token.
-                tag: Optional tag for the quote.
-            Returns:
-                Required input amount as a string
-        """
-        output_amount = await self._rhea.convert_to_atomic_units(output_amount, token_out)
-        json_args = {
-            "pool_ids": [pool_id],
-            "output_amount": output_amount,
-            "input_token": token_in,
-            "output_token": token_out,
-            "tag": tag,
-        }
-        result = await self._rhea._account.view_function(self.dcl_contract_id, "quote_by_output", json_args)
-        return await self._rhea.convert_to_human_readable(result.result["amount"], token_in)
