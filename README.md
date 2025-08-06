@@ -7,7 +7,7 @@
 [//]: # ([![downloads]&#40;https://img.shields.io/github/downloads/MaximAntsiferov/rhea-sdk/total?style=flat-square&#41;]&#40;https://pypi.org/project/rhea-sdk&#41;)
 
 
-**rhea-sdk** is an asynchronous SDK for interacting with Rhea Finance DEX
+**rhea-sdk** is an asynchronous SDK for interacting with Rhea Finance DEX  
 It is made on top of [py-near](https://github.com/pvolnov/py-near) - a pretty simple and fully asynchronous framework for working with NEAR blockchain.
 ## Examples
 <details>
