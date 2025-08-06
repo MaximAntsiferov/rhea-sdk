@@ -186,7 +186,7 @@ class DCL:
             pool_id: str,
             amount: str,
             tag: str = None,
-    ) -> list[dict]:
+    ) -> str:
         """
         Get a quote for a potential swap.
             Args:
@@ -196,9 +196,9 @@ class DCL:
                 amount: The amount of input token to swap.
                 tag: Optional tag for the quote.
             Returns:
-                list[dict]: Quote information including expected output amount.
+                Expected output amount as a string
         """
-        amount = await self._rhea.convert_to_atomic_units(token_in, amount)
+        amount = await self._rhea.convert_to_atomic_units(amount, token_in)
         json_args = {
             "pool_ids": [pool_id],
             "input_amount": amount,
@@ -207,7 +207,7 @@ class DCL:
             "tag": tag,
         }
         result = await self._rhea._account.view_function(self.dcl_contract_id, "quote", json_args)
-        return result.result
+        return await self._rhea.convert_to_human_readable(result.result["amount"], token_out)
 
     async def quote_by_output(
             self,
@@ -216,7 +216,7 @@ class DCL:
             pool_id: str,
             output_amount: str,
             tag: str = None,
-    ) -> list[dict]:
+    ) -> str:
         """
         Get a quote for a potential swap based on desired output amount.
             Args:
@@ -226,9 +226,9 @@ class DCL:
                 output_amount: The desired amount of output token.
                 tag: Optional tag for the quote.
             Returns:
-                list[dict]: Quote information including required input amount.
+                Required input amount as a string
         """
-        output_amount = await self._rhea.convert_to_atomic_units(token_out, output_amount)
+        output_amount = await self._rhea.convert_to_atomic_units(output_amount, token_out)
         json_args = {
             "pool_ids": [pool_id],
             "output_amount": output_amount,
@@ -236,5 +236,5 @@ class DCL:
             "output_token": token_out,
             "tag": tag,
         }
-        result = await self._rhea._account.view_function(self.dcl_contract_id, "quote", json_args)
-        return result.result
+        result = await self._rhea._account.view_function(self.dcl_contract_id, "quote_by_output", json_args)
+        return await self._rhea.convert_to_human_readable(result.result["amount"], token_in)
