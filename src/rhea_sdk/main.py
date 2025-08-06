@@ -177,7 +177,7 @@ class Rhea:
                 else:
                     raise EmptyStorageBalance(f"Storage balance deposit for {contract_id} required")
 
-    async def wrap_near(self, amount: str) -> str:
+    async def wrap_near(self, amount: str) -> None:
         """
         Convert NEAR to wNEAR (wrapped NEAR).
             Args:
@@ -194,9 +194,8 @@ class Rhea:
         )
         if result.status.get("Failure"):
             raise TransactionError(result.status)
-        return result
 
-    async def unwrap_near(self, amount: str) -> str:
+    async def unwrap_near(self, amount: str) -> None:
         """
         Convert wNEAR back to NEAR.
             Args:
@@ -213,7 +212,6 @@ class Rhea:
         )
         if result.status.get("Failure"):
             raise TransactionError(result.status)
-        return result
 
     async def convert_to_atomic_units(self, amount: str, token_contract_id: str = None) -> str:
         """

@@ -51,13 +51,27 @@ async def main():
 
    # Get pool extended info by pool_id
    pool = await rhea.dcl.get_pool(pool_id)
-
+    
    # Get current tokens price in the pool
    prices = await rhea.dcl.get_tokens_price(pool_id)
-
+   
+   # Quote output amount of token for swap
+   amount_to_swap = "0.1"
+   output_amount = await rhea.dcl.quote(usdc_contract, wnear_contract, pool_id, amount_to_swap)
+   
+   # Quote input amount of token for swap
+   desired_output_amount = "0.1"
+   input_amount = await rhea.dcl.quote_by_output(wnear_contract, usdc_contract, pool_id, desired_output_amount)
+   
    # Swap
    amount_to_swap = "0.1"
    await rhea.dcl.swap(wnear_contract, usdc_contract, pool_id, amount_to_swap)
+
+   # Swap by output
+   desired_output_amount = "0.1"
+   max_input_amount = "0.5"
+   await rhea.dcl.swap_by_output(wnear_contract, usdc_contract, pool_id, desired_output_amount, max_input_amount)
+
 ```
 
 </details>
