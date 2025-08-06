@@ -9,14 +9,15 @@
 
 **rhea-sdk** is an asynchronous SDK for interacting with Rhea Finance DEX.  
 It is made on top of [py-near](https://github.com/pvolnov/py-near) - a pretty simple and fully asynchronous framework for working with NEAR blockchain.
+
+## Installation
+- Install the latest stable version of rhea-sdk, simply running `pip install rhea-sdk`
+- Create NEAR account and get your private key [wallet](https://wallet.near.org/create)
+
 ## Examples
 <details>
   <summary>📚 Click to see some basic examples</summary>
 
-
-**Few steps before getting started...**
-- Install the latest stable version of rhea-sdk, simply running `pip install rhea-sdk`
-- Create NEAR account and get your private key [wallet](https://wallet.near.org/create)
 
 ### Usage examples
 
