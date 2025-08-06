@@ -88,8 +88,7 @@ class Rhea:
             raise AccountHasNoTokensError(f"No tokens available for account {account_id}")
         for token_ in data["tokens"]:
             if token_["contract_id"] == token_contract_id:
-                token_metadata = await self.get_token_metadata(token_contract_id)
-                return str(Decimal(token_["balance"]) / 10 ** token_metadata["decimals"])
+                return await self.convert_to_human_readable(token_["balance"], token_contract_id)
         return "0"
 
     async def get_near_balance(self, account_id: str = None) -> str:
@@ -104,16 +103,16 @@ class Rhea:
         data = await self._fastnear.get_full_account_data(account_id)
         if not data.get("state"):
             raise AccountHasNoStateError(f"No state available for account {account_id}")
-        return str(Decimal(data["state"]["balance"]) / NEAR)
+        return await self.convert_to_human_readable(data["state"]["balance"])
 
-    async def get_storage_balance(self, contract_id: str, account_id: str = None) -> dict:
+    async def get_storage_balance(self, contract_id: str, account_id: str = None) -> str:
         """
-        Get storage balance information for an account on a specific contract.
+        Get total storage balance for an account on a specific contract.
             Args:
                 contract_id: The contract ID to check storage for
                 account_id: Account ID to check (default: current account)
             Returns:
-                Dictionary containing storage balance information
+                Total storage balance as a string
         """
         account_id = account_id or self.account_id
         result = await self._account.view_function(
@@ -121,23 +120,22 @@ class Rhea:
             "storage_balance_of",
             {"account_id": account_id},
         )
-        return result.result
+        if result.result:
+            return await self.convert_to_human_readable(result.result["total"])
+        return "0"
 
-    async def get_storage_balance_bounds(self, contract_id: str) -> dict:
+    async def get_min_storage_balance(self, contract_id: str) -> str:
         """
-        Get min and max storage balance required for interacting with the contract.
+        Get min storage balance required for interacting with the contract.
             Args:
-                contract_id: The contract ID to get bounds of
+                contract_id: The contract ID to get min storage balance required of
             Returns:
-                Dictionary containing min and max storage balance bounds
+                Min storage balance as a string
         """
         result = await self._account.view_function(contract_id, "storage_balance_bounds", {})
-        return {
-            k: str(Decimal(v) / NEAR)
-            if isinstance(v, str) and v.isdigit()
-            else v
-            for k, v in result.result.items()
-        }
+        if result.result:
+            return await self.convert_to_human_readable(result.result["min"])
+        return "0"
 
     async def storage_deposit(
             self,
@@ -152,7 +150,7 @@ class Rhea:
             Returns:
                 Transaction result object
         """
-        converted_amount = int(Decimal(amount) * Decimal(NEAR))
+        converted_amount = int(await self.convert_to_atomic_units(amount))
         result = await self._account.function_call(
             contract_id,
             "storage_deposit",
@@ -172,10 +170,10 @@ class Rhea:
                 EmptyStorageBalance: If storage balance is required but not auto-deposited.
         """
         for contract_id in contracts_ids:
-            if not await self.get_storage_balance(contract_id):
+            if await self.get_storage_balance(contract_id) == "0":
                 if self.storage_auto_deposit:
-                    storage_balance_bounds = await self.get_storage_balance_bounds(contract_id)
-                    await self.storage_deposit(contract_id, storage_balance_bounds["min"])
+                    min_storage_balance = await self.get_min_storage_balance(contract_id)
+                    await self.storage_deposit(contract_id, min_storage_balance)
                 else:
                     raise EmptyStorageBalance(f"Storage balance deposit for {contract_id} required")
 
@@ -187,7 +185,7 @@ class Rhea:
             Returns:
                 Transaction result
         """
-        converted_amount = int(Decimal(amount) * Decimal(NEAR))
+        converted_amount = int(await self.convert_to_atomic_units(amount))
         result = await self._account.function_call(
             self.wnear_contract,
             "near_deposit",
@@ -206,7 +204,7 @@ class Rhea:
             Returns:
                 Transaction result
         """
-        converted_amount = str(int(Decimal(amount) * Decimal(NEAR)))
+        converted_amount = await self.convert_to_atomic_units(amount)
         result = await self._account.function_call(
             self.wnear_contract,
             "near_withdraw",
@@ -217,14 +215,38 @@ class Rhea:
             raise TransactionError(result.status)
         return result
 
-    async def convert_to_atomic_units(self, token_contract_id: str, amount: str) -> str:
+    async def convert_to_atomic_units(self, amount: str, token_contract_id: str = None) -> str:
         """
-        Convert human-readable token amount to atomic units (base units).
+        Convert a human-readable token amount to atomic units (base units).
+            For native NEAR tokens, converts using the standard NEAR decimal places (24).
+            For other tokens, uses the token's specific decimals from its metadata.
             Args:
-                token_contract_id: The contract ID of the token
-                amount: Human-readable amount to convert
+                amount: Human-readable amount to convert (as string to preserve precision)
+                token_contract_id: Contract ID of the token. If None, assumes native NEAR.
             Returns:
                 Amount in atomic units as a string
         """
+        if amount == "0":
+            return "0"
+        if not token_contract_id:
+            return str(int(Decimal(amount) * Decimal(NEAR)))
         token_metadata = await self.get_token_metadata(token_contract_id)
         return str(int(Decimal(amount) * 10 ** int(token_metadata["decimals"])))
+
+    async def convert_to_human_readable(self, amount: str, token_contract_id: str = None) -> str:
+        """
+        Convert token amount in atomic units (base units) to a human-readable amount.
+            For native NEAR tokens, converts using the standard NEAR decimal places (24).
+            For other tokens, uses the token's specific decimals from its metadata.
+            Args:
+                amount: amount in atomic units (base units) to convert
+                token_contract_id: Contract ID of the token. If None, assumes native NEAR.
+            Returns:
+                Human-readable amount as a string
+        """
+        if amount == "0":
+            return "0"
+        if not token_contract_id:
+            return str(Decimal(amount) / Decimal(NEAR))
+        token_metadata = await self.get_token_metadata(token_contract_id)
+        return str(Decimal(amount) / 10 ** int(token_metadata["decimals"]))

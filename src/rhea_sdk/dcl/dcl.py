@@ -7,7 +7,7 @@ from py_near.models import TransactionResult
 
 from rhea_sdk.constances import DCL_POOL_FEE_LIST, CONSTANT_D, RHEA_DCL_TESTNET_CONTRACT, TESTNET_CHAIN_ID, \
     RHEA_DCL_MAINNET_CONTRACT, NEAR
-from rhea_sdk.exceptions import EmptyStorageBalance, TransactionError, TransactionReceiptError, PoolFeeError
+from rhea_sdk.exceptions import TransactionError, TransactionReceiptError, PoolFeeError
 
 
 class DCL:
