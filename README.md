@@ -8,7 +8,7 @@
 
 
 **rhea-sdk** is an asynchronous SDK for interacting with Rhea Finance DEX
-
+It is made on top of [py-near](https://github.com/pvolnov/py-near) - a pretty simple and fully asynchronous framework for working with NEAR blockchain.
 ## Examples
 <details>
   <summary>📚 Click to see some basic examples</summary>
