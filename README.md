@@ -66,7 +66,8 @@ async def main():
    
    # Swap
    amount_to_swap = "0.1"
-   await rhea.dcl.swap(wnear_contract, usdc_contract, pool_id, amount_to_swap)
+   min_output_amount = "0"
+   await rhea.dcl.swap(wnear_contract, usdc_contract, pool_id, amount_to_swap, min_output_amount)
 
    # Swap by output
    desired_output_amount = "0.1"
